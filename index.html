@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HGT Ad Network Dashboard</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+
+        /* Login Screen */
+        #login-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .google-btn {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .google-btn:hover { background-color: #357ae8; }
+
+        /* Dashboard */
+        #dashboard {
+            display: none; /* Hidden until logged in */
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            background-color: #ff4c4c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Ad Preview Container */
+        .ad-preview-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* The Actual Ad Card */
+        .hgt-ad-card {
+            position: relative; /* Required for the dot to position correctly */
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 15px;
+            background: #fafafa;
+            border-radius: 4px;
+        }
+        .hgt-ad-title {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .hgt-ad-media img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        .hgt-ad-media iframe {
+            width: 100%;
+            height: 315px;
+            border: none;
+            border-radius: 4px;
+        }
+
+        /* The HGT Info Dot */
+        .hgt-info-dot {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: rgba(0,0,0,0.1);
+            color: #333;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .hgt-info-dot:hover {
+            background: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2>Henry Global Tech Industry</h2>
+        <p>Admin Dashboard Login</p>
+        <button class="google-btn" onclick="signInWithGoogle()">Sign in with Google</button>
+    </div>
+
+    <div id="dashboard">
+        <div class="header">
+            <h2 style="margin:0;">HGT Ad Network</h2>
+            <div>
+                <span id="user-email" style="margin-right: 15px; font-weight: bold;"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="ad-preview-box">
+            <h3>Live Ad Preview</h3>
+            <p>This is exactly how your ad looks to users on the network.</p>
+            
+            <div id="ad-container">Loading ad from database...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- STEP 1: PASTE YOUR FIREBASE CONFIG HERE ---
+        // Go to Firebase Console -> Project Settings -> General -> Scroll down to your web app
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- AUTHENTICATION LOGIC ---
+        const provider = new firebase.auth.GoogleAuthProvider();
+
+        function signInWithGoogle() {
+            auth.signInWithPopup(provider).catch((error) => {
+                alert("Login Failed: " + error.message);
+            });
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // Monitor Login Status
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // User is logged in, show dashboard
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('user-email').innerText = user.email;
+                
+                // Fetch the ad once logged in
+                fetchActiveAd();
+            } else {
+                // User is logged out, show login screen
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+            }
+        });
+
+        // --- DATABASE LOGIC ---
+        function fetchActiveAd() {
+            const adContainer = document.getElementById('ad-container');
+
+            // Pull from the "ads" collection where status is "active"
+            db.collection("ads").where("status", "==", "active").limit(1).get()
+            .then((querySnapshot) => {
+                if (querySnapshot.empty) {
+                    adContainer.innerHTML = "<p>No active ads found in the database.</p>";
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const ad = doc.data();
+                    renderAd(ad, adContainer);
+                });
+            })
+            .catch((error) => {
+                console.error("Error fetching ad: ", error);
+                adContainer.innerHTML = "<p>Error loading ad. Check console.</p>";
+            });
+        }
+
+        // --- AD RENDERING LOGIC ---
+        function renderAd(ad, container) {
+            let mediaHTML = "";
+
+            // Check if Video or Image
+            if (ad.format_type === "video") {
+                mediaHTML = `<iframe src="${ad.video_url}" allowfullscreen></iframe>`;
+            } else {
+                mediaHTML = `<a href="${ad.target_url}" target="_blank"><img src="${ad.image_url}"></a>`;
+            }
+
+            // Build the Ad HTML (Notice the "hgt-info-dot" div)
+            container.innerHTML = `
+                <div class="hgt-ad-card">
+                    
+                    <div class="hgt-info-dot" onclick="showHGTBrand()">⋮</div>
+
+                    <h4 class="hgt-ad-title">${ad.title || "Advertisement"}</h4>
+                    
+                    <div class="hgt-ad-media">
+                        ${mediaHTML}
+                    </div>
+
+                </div>
+            `;
+        }
+
+        // --- THE HGT DOT FUNCTION ---
+        function showHGTBrand() {
+            alert("Ad served by Henry Global Tech Industry (HGT)");
+        }
+    </script>
+</body>
+</html>
