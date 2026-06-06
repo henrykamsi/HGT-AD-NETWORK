@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
 
     <style>
         body {
@@ -18,29 +19,120 @@
             color: #333;
         }
 
-        /* Login Screen */
-        #login-screen {
+        /* Auth Container Layout */
+        #auth-container {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
         }
+        .auth-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+        .auth-card h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #111;
+        }
+        .auth-card p {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .submit-btn {
+            width: 100%;
+            background-color: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .submit-btn:hover { background-color: #333; }
+        
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .divider::before {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+            z-index: 1;
+        }
+        .divider span {
+            background: white;
+            padding: 0 10px;
+            position: relative;
+            z-index: 2;
+            color: #888;
+            font-size: 12px;
+        }
+
         .google-btn {
+            width: 100%;
             background-color: #4285F4;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 5px;
+            padding: 12px;
+            font-size: 15px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .google-btn:hover { background-color: #357ae8; }
 
-        /* Dashboard */
+        .toggle-text {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+        .toggle-text a {
+            color: #4285F4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        /* Dashboard View Layout */
         #dashboard {
-            display: none; /* Hidden until logged in */
+            display: none; 
             padding: 20px;
             max-width: 800px;
             margin: 0 auto;
@@ -64,17 +156,15 @@
             cursor: pointer;
         }
 
-        /* Ad Preview Container */
+        /* Ad Presentation Containers */
         .ad-preview-box {
             background: #fff;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
-        /* The Actual Ad Card */
         .hgt-ad-card {
-            position: relative; /* Required for the dot to position correctly */
+            position: relative; 
             border: 1px solid #ddd;
             padding: 10px;
             margin-top: 15px;
@@ -95,8 +185,6 @@
             border: none;
             border-radius: 4px;
         }
-
-        /* The HGT Info Dot */
         .hgt-info-dot {
             position: absolute;
             top: 5px;
@@ -113,148 +201,224 @@
             cursor: pointer;
             font-size: 14px;
         }
-        .hgt-info-dot:hover {
-            background: #ddd;
-        }
+        .hgt-info-dot:hover { background: #ddd; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen">
-        <h2>Henry Global Tech Industry</h2>
-        <p>Admin Dashboard Login</p>
-        <button class="google-btn" onclick="signInWithGoogle()">Sign in with Google</button>
+    <div id="auth-container">
+        
+        <div id="login-card" class="auth-card">
+            <h2>HGT Ad Network</h2>
+            <p>Sign in to manage your ads</p>
+            
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="login-email" placeholder="example@domain.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button class="submit-btn" onclick="loginWithEmail()">Login</button>
+            
+            <div class="divider"><span>OR</span></div>
+            
+            <button class="google-btn" onclick="signInWithGoogle()">Sign in with Google</button>
+            
+            <div class="toggle-text">
+                Don't have an account? <a href="#" onclick="toggleAuthViews('signup')">Sign Up Here</a>
+            </div>
+        </div>
+
+        <div id="signup-card" class="auth-card" style="display: none;">
+            <h2>Create HGT Account</h2>
+            <p>Register to the ad platform</p>
+            
+            <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="signup-name" placeholder="John">
+            </div>
+            <div class="form-group">
+                <label>Surname</label>
+                <input type="text" id="signup-surname" placeholder="Doe">
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="signup-email" placeholder="example@domain.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="signup-password" placeholder="At least 6 characters">
+            </div>
+            <button class="submit-btn" onclick="registerWithEmail()">Create Account</button>
+            
+            <div class="divider"><span>OR</span></div>
+            
+            <button class="google-btn" onclick="signInWithGoogle()">Sign up with Google</button>
+            
+            <div class="toggle-text">
+                Already have an account? <a href="#" onclick="toggleAuthViews('login')">Login Here</a>
+            </div>
+        </div>
+
     </div>
 
     <div id="dashboard">
         <div class="header">
-            <h2 style="margin:0;">HGT Ad Network</h2>
+            <h2 style="margin:0;">HGT Dashboard</h2>
             <div>
-                <span id="user-email" style="margin-right: 15px; font-weight: bold;"></span>
+                <span id="user-display-name" style="margin-right: 15px; font-weight: bold;"></span>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
 
         <div class="ad-preview-box">
             <h3>Live Ad Preview</h3>
-            <p>This is exactly how your ad looks to users on the network.</p>
-            
-            <div id="ad-container">Loading ad from database...</div>
+            <div id="ad-container">Connecting to HGT Database...</div>
         </div>
     </div>
 
     <script>
-
-         // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB_7sZgBpk5SFzNfaSxjYAirOTJb2ByBCE",
-  authDomain: "ad-infact.firebaseapp.com",
-  projectId: "ad-infact",
-  storageBucket: "ad-infact.firebasestorage.app",
-  messagingSenderId: "454353371209",
-  appId: "1:454353371209:web:cda5f33e06ae8405bbbf98",
-  measurementId: "G-Z4W6M3FJ8Z"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
+        // --- YOUR EXACT FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_7sZgBpk5SFzNfaSxjYAirOTJb2ByBCE",
+            authDomain: "ad-infact.firebaseapp.com",
+            projectId: "ad-infact",
+            storageBucket: "ad-infact.firebasestorage.app",
+            messagingSenderId: "454353371209",
+            appId: "1:454353371209:web:cda5f33e06ae8405bbbf98",
+            measurementId: "G-Z4W6M3FJ8Z"
         };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
+        const analytics = firebase.analytics();
+
+        // Switch between Login and Sign Up views
+        function toggleAuthViews(target) {
+            if (target === 'signup') {
+                document.getElementById('login-card').style.display = 'none';
+                document.getElementById('signup-card').style.display = 'block';
+            } else {
+                document.getElementById('login-card').style.display = 'block';
+                document.getElementById('signup-card').style.display = 'none';
+            }
+        }
 
         // --- AUTHENTICATION LOGIC ---
-        const provider = new firebase.auth.GoogleAuthProvider();
+        
+        // 1. Manual Sign Up (Email & Password)
+        function registerWithEmail() {
+            const name = document.getElementById('signup-name').value.trim();
+            const surname = document.getElementById('signup-surname').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
 
-        function signInWithGoogle() {
-            auth.signInWithPopup(provider).catch((error) => {
-                alert("Login Failed: " + error.message);
+            if(!name || !surname || !email || !password) {
+                alert("Please complete all fields.");
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+            .then((userCredential) => {
+                return userCredential.user.updateProfile({
+                    displayName: `${name} ${surname}`
+                });
+            })
+            .then(() => {
+                alert("Account created successfully!");
+            })
+            .catch((error) => {
+                alert("Registration Error: " + error.message);
             });
         }
 
+        // 2. Manual Login (Email & Password)
+        function loginWithEmail() {
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+
+            if(!email || !password) {
+                alert("Please enter both email and password.");
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password)
+            .catch((error) => {
+                alert("Login Error: " + error.message);
+            });
+        }
+
+        // 3. Google Sign In
+        const provider = new firebase.auth.GoogleAuthProvider();
+        function signInWithGoogle() {
+            auth.signInWithPopup(provider).catch((error) => {
+                alert("Google Auth Failed: " + error.message);
+            });
+        }
+
+        // 4. Logout
         function logout() {
             auth.signOut();
         }
 
-        // Monitor Login Status
+        // Listen for Login State Changes
         auth.onAuthStateChanged((user) => {
             if (user) {
-                // User is logged in, show dashboard
-                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('auth-container').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('user-email').innerText = user.email;
-                
-                // Fetch the ad once logged in
+                document.getElementById('user-display-name').innerText = user.displayName || user.email;
                 fetchActiveAd();
             } else {
-                // User is logged out, show login screen
-                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('auth-container').style.display = 'flex';
                 document.getElementById('dashboard').style.display = 'none';
             }
         });
 
-        // --- DATABASE LOGIC ---
+        // --- FIRESTORE AD LOGIC ---
         function fetchActiveAd() {
             const adContainer = document.getElementById('ad-container');
 
-            // Pull from the "ads" collection where status is "active"
             db.collection("ads").where("status", "==", "active").limit(1).get()
             .then((querySnapshot) => {
                 if (querySnapshot.empty) {
-                    adContainer.innerHTML = "<p>No active ads found in the database.</p>";
+                    adContainer.innerHTML = "<p>No active network ads found.</p>";
                     return;
                 }
-
                 querySnapshot.forEach((doc) => {
-                    const ad = doc.data();
-                    renderAd(ad, adContainer);
+                    renderAd(doc.data(), adContainer);
                 });
             })
             .catch((error) => {
-                console.error("Error fetching ad: ", error);
-                adContainer.innerHTML = "<p>Error loading ad. Check console.</p>";
+                console.error("Firestore error:", error);
+                adContainer.innerHTML = "<p>Error loading ad assets.</p>";
             });
         }
 
-        // --- AD RENDERING LOGIC ---
+        // --- AD RENDERER ---
         function renderAd(ad, container) {
             let mediaHTML = "";
 
-            // Check if Video or Image
             if (ad.format_type === "video") {
                 mediaHTML = `<iframe src="${ad.video_url}" allowfullscreen></iframe>`;
             } else {
                 mediaHTML = `<a href="${ad.target_url}" target="_blank"><img src="${ad.image_url}"></a>`;
             }
 
-            // Build the Ad HTML (Notice the "hgt-info-dot" div)
             container.innerHTML = `
                 <div class="hgt-ad-card">
-                    
                     <div class="hgt-info-dot" onclick="showHGTBrand()">⋮</div>
-
-                    <h4 class="hgt-ad-title">${ad.title || "Advertisement"}</h4>
-                    
+                    <h4 class="hgt-ad-title">${ad.title || "Sponsored Link"}</h4>
                     <div class="hgt-ad-media">
                         ${mediaHTML}
                     </div>
-
                 </div>
             `;
         }
 
-        // --- THE HGT DOT FUNCTION ---
         function showHGTBrand() {
             alert("Ad served by Henry Global Tech Industry (HGT)");
         }
